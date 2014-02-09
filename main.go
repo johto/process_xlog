@@ -147,7 +147,6 @@ func main() {
 	// to start streaming from and we end up with a gap in the WAL stream.
 	// pg_receivexlog also does not pay attention to partial files, so it
 	// has to be the latest non-partial file.
-	// filter out all non-xlog files
 	filenames = filterNonXlogFiles(filenames)
 	if len(filenames) < 2 {
 		// nothing to do
