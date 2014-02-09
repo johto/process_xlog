@@ -142,7 +142,7 @@ func main() {
 	}
 	dirfh.Close()
 
-	// Compress all files, except the one that's the most recent in the WAL
+	// Process all files, except the one that's the most recent in the WAL
 	// stream.  If we process all files, pg_receivexlog won't know where
 	// to start streaming from and we end up with a gap in the WAL stream.
 	// pg_receivexlog also does not pay attention to partial files, so it
