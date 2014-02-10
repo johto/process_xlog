@@ -92,11 +92,9 @@ func replaceFormatVerbs(format string, fullPath string, filename string) (string
 			continue
 		}
 		percent = false
-		if r == '%' {
-			result = result + string(r)
-			continue
-		}
 		switch (r) {
+		case '%':
+			result = result + string(r)
 		case 'p':
 			result = result + fullPath
 		case 'f':
