@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"sort"
 	"strings"
 )
 
@@ -77,6 +78,12 @@ func filterNonXlogFiles(filenames []string) []string {
 		result = append(result, file)
 	}
 	return result
+}
+
+func sortXlogFiles(filenames []string) []string {
+	s := sort.StringSlice(filenames)
+	s.Sort()
+	return []string(s)
 }
 
 func replaceFormatVerbs(format string, fullPath string, filename string) (string, error) {
@@ -150,21 +157,11 @@ func main() {
 		// nothing to do
 		os.Exit(0)
 	}
-	latestFile := filenames[0]
-	for _, file := range(filenames[1:]) {
-		var process string
-		cmp := bytes.Compare([]byte(latestFile), []byte(file))
-		if cmp < 0 {
-			process = latestFile
-			latestFile = file
-		} else if cmp > 0 {
-			process = file
-		} else {
-			log.Fatalf("file %s equal to %s, aborting", latestFile, file)
-		}
-
-		processFile(flagSet.Arg(0), process, flagSet.Arg(1))
+	filenames = sortXlogFiles(filenames)
+	for _, file := range(filenames[:len(filenames)-1]) {
+		processFile(flagSet.Arg(0), file, flagSet.Arg(1))
 	}
+	latestFile := filenames[len(filenames)-1]
 	if dryRun {
 		fmt.Printf("would not process %s\n", latestFile)
 	}
