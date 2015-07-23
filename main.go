@@ -114,8 +114,8 @@ func main() {
 
 	log.SetOutput(os.Stderr)
 	flagSet := flag.NewFlagSet("args", flag.ExitOnError)
-	flagSet.BoolVar(&dryRun, "dryrun", false, "wtf")
-	flagSet.BoolVar(&displayHelp, "help", false, "wtf^2")
+	flagSet.BoolVar(&dryRun, "dryrun", false, "")
+	flagSet.BoolVar(&displayHelp, "help", false, "")
 	flagSet.Usage = printUsage
 	err := flagSet.Parse(os.Args[1:])
 	if err != nil {
