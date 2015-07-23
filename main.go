@@ -21,8 +21,8 @@ func printUsage() {
 Usage:
   %s [options] <xlogdir> <process command>
 
-  In the process command, %p is replaced by the path to the file it should
-  process, %f is replaced by only the filename, and %% will be replaced with
+  In the process command, %%p is replaced by the path to the file it should
+  process, %%f is replaced by only the filename, and %% will be replaced with
   a percent sign.  The command should return a zero exit status only if it
   succeeds.
 Options:
