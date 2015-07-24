@@ -10,6 +10,7 @@ import (
 	"path"
 	"sort"
 	"strings"
+	"sync"
 )
 
 const XLOG_DATA_FNAME_LEN int = 24
@@ -27,20 +28,13 @@ Usage:
   a percent sign.  The command should return a zero exit status only if it
   succeeds.
 Options:
+  -j WORKERS  number of files to process concurrently (default 1)
   --dryrun    dry run, show what the program would do
   --help      display this help
 `, os.Args[0])
 }
 
 func processFile(dir string, filename string, processCommand string) (err error) {
-	processCommand, err = replaceFormatVerbs(processCommand, path.Join(dir, filename), filename)
-	if err != nil {
-		return err
-	}
-	if dryRun {
-		fmt.Printf("would process %s in %s by running `%s`\n", filename, dir, processCommand)
-		return nil
-	}
 	cmd := exec.Command("sh", "-c", processCommand)
 	var captureStderr bytes.Buffer
 	cmd.Stderr = &captureStderr
@@ -118,11 +112,13 @@ func replaceFormatVerbs(format string, fullPath string, filename string) (string
 
 func main() {
 	var displayHelp bool
+	var numWorkers int
 
 	log.SetOutput(os.Stderr)
 	flagSet := flag.NewFlagSet("args", flag.ExitOnError)
 	flagSet.BoolVar(&dryRun, "dryrun", false, "")
 	flagSet.BoolVar(&displayHelp, "help", false, "")
+	flagSet.IntVar(&numWorkers, "j", 1, "")
 	flagSet.Usage = printUsage
 	err := flagSet.Parse(os.Args[1:])
 	if err != nil {
@@ -135,6 +131,10 @@ func main() {
 	if len(flagSet.Args()) != 2 {
 		printUsage()
 		os.Exit(1)
+	}
+
+	if numWorkers < 1 {
+		log.Fatalf("invalid value %d for -j", numWorkers)
 	}
 
 	dirfh, err := os.Open(flagSet.Arg(0))
@@ -157,10 +157,36 @@ func main() {
 		// nothing to do
 		os.Exit(0)
 	}
-	filenames = sortXlogFiles(filenames)
-	for _, file := range(filenames[:len(filenames)-1]) {
-		processFile(flagSet.Arg(0), file, flagSet.Arg(1))
+
+	filenameChannel := make(chan string, numWorkers)
+	wg := &sync.WaitGroup{}
+	wg.Add(numWorkers)
+	for i := 0; i < numWorkers; i++ {
+		go func() {
+			for filename := range filenameChannel {
+				processFile(flagSet.Arg(0), filename, flagSet.Arg(1))
+			}
+			wg.Done()
+		}()
 	}
+
+	dirname := flagSet.Arg(0)
+	filenames = sortXlogFiles(filenames)
+	for _, filename := range(filenames[:len(filenames)-1]) {
+		processCommand, err := replaceFormatVerbs(flagSet.Arg(1), path.Join(dirname, filename), filename)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		if dryRun {
+			fmt.Printf("would process %s in %s by running `%s`\n", filename, dirname, processCommand)
+			continue
+		}
+		filenameChannel <- filename
+	}
+	close(filenameChannel)
+	wg.Wait()
+
 	latestFile := filenames[len(filenames)-1]
 	if dryRun {
 		fmt.Printf("would not process %s\n", latestFile)
