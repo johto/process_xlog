@@ -34,13 +34,13 @@ Options:
 `, os.Args[0])
 }
 
-func processFile(dir string, filename string, processCommand string) (err error) {
+func runCommand(processCommand string) (err error) {
 	cmd := exec.Command("sh", "-c", processCommand)
 	var captureStderr bytes.Buffer
 	cmd.Stderr = &captureStderr
 	err = cmd.Run()
 	if err != nil {
-		log.Printf("process command failed: %s", err.Error())
+		log.Printf("process command %q failed: %s", processCommand, err.Error())
 		if len(captureStderr.Bytes()) > 0 {
 			log.Printf("Program output:")
 			log.Printf("%s", captureStderr.Bytes())
@@ -158,13 +158,13 @@ func main() {
 		os.Exit(0)
 	}
 
-	filenameChannel := make(chan string, numWorkers)
+	processCommandChannel := make(chan string, numWorkers)
 	wg := &sync.WaitGroup{}
 	wg.Add(numWorkers)
 	for i := 0; i < numWorkers; i++ {
 		go func() {
-			for filename := range filenameChannel {
-				processFile(flagSet.Arg(0), filename, flagSet.Arg(1))
+			for processCommand := range processCommandChannel {
+				runCommand(processCommand)
 			}
 			wg.Done()
 		}()
@@ -182,9 +182,9 @@ func main() {
 			fmt.Printf("would process %s in %s by running `%s`\n", filename, dirname, processCommand)
 			continue
 		}
-		filenameChannel <- filename
+		processCommandChannel <- processCommand
 	}
-	close(filenameChannel)
+	close(processCommandChannel)
 	wg.Wait()
 
 	latestFile := filenames[len(filenames)-1]
